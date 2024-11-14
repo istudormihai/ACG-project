@@ -8,20 +8,21 @@
 #include "dependente\glm\gtc\type_ptr.hpp"
 #include "shader.hpp"
 
-//variables
+// Variables
 GLFWwindow* window;
 const int width = 1024, height = 1024;
 
-void window_callback(GLFWwindow* window, int new_width, int new_height)
-{
+// Triangle position
+glm::vec3 trianglePos = glm::vec3(0.0f, 0.0f, 0.0f);
+
+// Window resize callback
+void window_callback(GLFWwindow* window, int new_width, int new_height) {
 	glViewport(0, 0, new_width, new_height);
 }
 
-int main(void)
-{
-	// Initialise GLFW
-	if (!glfwInit())
-	{
+int main(void) {
+	// Initialize GLFW
+	if (!glfwInit()) {
 		fprintf(stderr, "Failed to initialize GLFW\n");
 		return -1;
 	}
@@ -44,107 +45,94 @@ int main(void)
 		return -1;
 	}
 
-	//specify the size of the rendering window
+	// Set up the rendering window
 	glViewport(0, 0, width, height);
 
-	// Dark blue background
+	// Background color
 	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
 
-
-	// Create and compile our GLSL program from the shaders
+	// Compile shaders
 	GLuint programID = LoadShaders("SimpleVertexShader.vertexshader", "SimpleFragmentShader.fragmentshader");
 
+	// Define vertices and indices
 	GLfloat vertices[] = {
 		0.0f,  -0.7f, 0.0f,  // Bottom-center vertex
 		-0.1f, -0.8f, 0.0f,  // Bottom-left vertex
-		0.1f, -0.8f, 0.0f   // top left 
+		0.1f, -0.8f, 0.0f    // Bottom-right vertex
 	};
 
-	GLuint indices[] = {  // note that we start from 0!
-		0, 1, 2,  // first Triangle
-	};
+	GLuint indices[] = { 0, 1, 2 };
 
-
-	// A Vertex Array Object (VAO) is an object which contains one or more Vertex Buffer Objects and is designed to store the information for a complete rendered object. 
+	// Set up VAO, VBO, and IBO
 	GLuint vbo, vao, ibo;
 	glGenVertexArrays(1, &vao);
 	glGenBuffers(1, &vbo);
 	glGenBuffers(1, &ibo);
 
-	//bind VAO
+	// Bind VAO
 	glBindVertexArray(vao);
 
-	//bind VBO
+	// Bind and set VBO
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-	//bind IBO
+	// Bind and set IBO
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-	//set attribute pointers
-	glVertexAttribPointer(
-		0,                  // attribute 0, must match the layout in the shader.
-		3,                  // size of each attribute
-		GL_FLOAT,           // type
-		GL_FALSE,           // normalized?
-		3 * sizeof(float),  // stride
-		(void*)0            // array buffer offset
-	);
+	// Set vertex attribute pointers
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
-	//create matrices for transforms
-	glm::mat4 trans(1.0f);
-
-	//maybe we can play with different positions
-	glm::vec3 positions[] = {
-		glm::vec3(0.0f,  0.0f,  0),
-		glm::vec3(0.2f,  0.5f, 0),
-		glm::vec3(-0.15f, -0.22f, 0),
-		glm::vec3(-0.38f, -0.2f, 0),
-		glm::vec3(0.24f, -0.4f, 0),
-		glm::vec3(-0.17f,  0.3f, 0),
-		glm::vec3(0.23f, -0.2f, 0),
-		glm::vec3(0.15f,  0.2f, 0),
-		glm::vec3(0.15f,  0.7f, 0),
-		glm::vec3(-0.13f,  0.1f, 0)
-	};
-
-
-	//Ex4 - Set callback for window resizing
+	// Set callback for window resizing
 	glfwSetFramebufferSizeCallback(window, window_callback);
 
+	// Timing variables for smooth movement
+	float lastFrame = 0.0f;
 
-	// Check if the window was closed
-	while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_RELEASE)
-	{
+	// Main loop
+	while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_RELEASE) {
+		// Calculate delta time
+		float currentFrame = glfwGetTime();
+		float deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
 
-		// Swap buffers
-		glfwSwapBuffers(window);
+		// Define movement speed
+		float speed = 1.0f * deltaTime;
 
-		// Check for events
-		glfwPollEvents();
+		// Check for key presses to move the triangle
+		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+			trianglePos.y += speed;
+		if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+			trianglePos.y -= speed;
+		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+			trianglePos.x -= speed;
+		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+			trianglePos.x += speed;
 
 		// Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		// Use our shader
+		// Use the shader program
 		glUseProgram(programID);
 
-		trans = glm::mat4(1.0f);
-
-			//bind VAO
-		glBindVertexArray(vao);
-
+		// Update transformation matrix
+		glm::mat4 trans = glm::translate(glm::mat4(1.0f), trianglePos);
 		unsigned int transformLoc = glGetUniformLocation(programID, "transform");
 		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
-		unsigned int transformLoc2 = glGetUniformLocation(programID, "color");
+		// Set color
+		unsigned int colorLoc = glGetUniformLocation(programID, "color");
 		glm::vec4 color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0);
-		glUniform4fv(transformLoc2, 1, glm::value_ptr(color));
+		glUniform4fv(colorLoc, 1, glm::value_ptr(color));
 
+		// Draw the triangle
+		glBindVertexArray(vao);
 		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+
+		// Swap buffers and poll events
+		glfwSwapBuffers(window);
+		glfwPollEvents();
 	}
 
 	// Cleanup
@@ -158,5 +146,3 @@ int main(void)
 
 	return 0;
 }
-
-
