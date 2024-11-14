@@ -1,44 +1,19 @@
-// Include standard headers
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
-
-// Include GLEW
 #include "dependente\glew\glew.h"
-
-// Include GLFW
 #include "dependente\glfw\glfw3.h"
-
-// Include GLM
 #include "dependente\glm\glm.hpp"
 #include "dependente\glm\gtc\matrix_transform.hpp"
 #include "dependente\glm\gtc\type_ptr.hpp"
-
 #include "shader.hpp"
 
 //variables
 GLFWwindow* window;
 const int width = 1024, height = 1024;
 
-//Handling cursor position
-void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
-{
-	std::cout << "The mouse cursor is: " << xpos << " " << ypos << std::endl;
-}
-
-int pozitie = 0;
-
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-	if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {
-		pozitie = (pozitie + 1) % 10;
-	}
-}
-
-
-//Ex 4: Complete callback for adjusting the viewport when resizing the window
 void window_callback(GLFWwindow* window, int new_width, int new_height)
 {
-	//what should we do here?
 	glViewport(0, 0, new_width, new_height);
 }
 
@@ -81,15 +56,13 @@ int main(void)
 	GLuint programID = LoadShaders("SimpleVertexShader.vertexshader", "SimpleFragmentShader.fragmentshader");
 
 	GLfloat vertices[] = {
-		0.05f,  0.05f, 0.0f,  // top right
-		0.05f, -0.05f, 0.0f,  // bottom right
-		-0.05f, -0.05f, 0.0f,  // bottom left
-		-0.05f,  0.05f, 0.0f   // top left 
+		0.0f,  -0.7f, 0.0f,  // Bottom-center vertex
+		-0.1f, -0.8f, 0.0f,  // Bottom-left vertex
+		0.1f, -0.8f, 0.0f   // top left 
 	};
 
 	GLuint indices[] = {  // note that we start from 0!
-		0, 3, 1,  // first Triangle
-		1, 3, 2,   // second Triangle
+		0, 1, 2,  // first Triangle
 	};
 
 
@@ -138,11 +111,6 @@ int main(void)
 		glm::vec3(-0.13f,  0.1f, 0)
 	};
 
-	glfwSetMouseButtonCallback(window, mouse_button_callback);
-
-	// Set a callback for handling mouse cursor position
-	// Decomment for a callback example
-	glfwSetCursorPosCallback(window, cursor_position_callback);
 
 	//Ex4 - Set callback for window resizing
 	glfwSetFramebufferSizeCallback(window, window_callback);
@@ -151,11 +119,6 @@ int main(void)
 	// Check if the window was closed
 	while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_RELEASE)
 	{
-
-		//if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		//{
-		//	glfwSetWindowShouldClose(window, true);
-		//}
 
 		// Swap buffers
 		glfwSwapBuffers(window);
@@ -169,36 +132,19 @@ int main(void)
 		// Use our shader
 		glUseProgram(programID);
 
-		//rotation task based on glfw
-		//trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0, 0.0, 1.0));
-		//with fixed angle
-		//if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-		//	trans = glm::rotate(trans, 0.1f, glm::vec3(0.0, 0.0, 1.0));
-		//}
-
-		//if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-		//	trans = glm::rotate(trans, -0.1f, glm::vec3(0.0, 0.0, 1.0));
-		//}
-
 		trans = glm::mat4(1.0f);
-		trans = glm::translate(trans, positions[pozitie]);
 
 			//bind VAO
 		glBindVertexArray(vao);
 
-		for (int i = 0; i < 1; i++) {
-			trans = glm::mat4(1.0f);
-			trans = glm::translate(trans, positions[i]);
-			// send variables to shader
-			unsigned int transformLoc = glGetUniformLocation(programID, "transform");
-			glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+		unsigned int transformLoc = glGetUniformLocation(programID, "transform");
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
-			unsigned int transformLoc2 = glGetUniformLocation(programID, "color");
-			glm::vec4 color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0);
-			glUniform4fv(transformLoc2, 1, glm::value_ptr(color));
+		unsigned int transformLoc2 = glGetUniformLocation(programID, "color");
+		glm::vec4 color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0);
+		glUniform4fv(transformLoc2, 1, glm::value_ptr(color));
 
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		}
+		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 	}
 
 	// Cleanup
