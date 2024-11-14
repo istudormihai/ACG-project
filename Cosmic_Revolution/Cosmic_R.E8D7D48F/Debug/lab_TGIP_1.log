@@ -1,7 +1,0 @@
-﻿          1 file(s) copied.
-          1 file(s) copied.
-  main.cpp
-E:\GitHub\ACG-project\Cosmic_Revolution\main.cpp(96,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-  shader.cpp
-  Generating Code...
-  lab_TGIP_1.vcxproj -> E:\GitHub\ACG-project\Cosmic_Revolution\Debug\Cosmic_Revolution.exe
