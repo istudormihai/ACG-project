@@ -52,7 +52,7 @@ int main(void)
 	}
 
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow(width, height, "Lab 4", NULL, NULL);
+	window = glfwCreateWindow(width, height, "Cosmic Revolution", NULL, NULL);
 	if (window == NULL) {
 		fprintf(stderr, "Failed to open GLFW window.");
 		glfwTerminate();
