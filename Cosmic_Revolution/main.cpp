@@ -12,8 +12,6 @@
 GLFWwindow* window;
 const int width = 1024, height = 1024;
 
-// test
-
 // Triangle position
 glm::vec3 trianglePos = glm::vec3(0.0f, 0.0f, 0.0f);
 
