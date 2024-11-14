@@ -8,6 +8,38 @@
 #include "dependente\glm\gtc\type_ptr.hpp"
 #include "shader.hpp"
 
+// background image header
+#define STB_IMAGE_IMPLEMENTATION
+#include "dependente\stb\stb_image.h"
+
+// background function
+GLuint loadTexture(const char* filePath) {
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+
+	// Load the image
+	int width, height, nrChannels;
+	unsigned char* data = stbi_load(filePath, &width, &height, &nrChannels, 0);
+	if (data) {
+		GLenum format = nrChannels == 4 ? GL_RGBA : GL_RGB;
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else {
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	stbi_image_free(data);
+
+	// Set the texture wrapping/filtering options
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	return textureID;
+}
+
 // Variables
 GLFWwindow* window;
 const int width = 1024, height = 1024;
@@ -21,6 +53,7 @@ void window_callback(GLFWwindow* window, int new_width, int new_height) {
 }
 
 int main(void) {
+	
 	// Initialize GLFW
 	if (!glfwInit()) {
 		fprintf(stderr, "Failed to initialize GLFW\n");
@@ -48,11 +81,42 @@ int main(void) {
 	// Set up the rendering window
 	glViewport(0, 0, width, height);
 
-	// Background color
+	 //Background color
 	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
 
 	// Compile shaders
 	GLuint programID = LoadShaders("SimpleVertexShader.vertexshader", "SimpleFragmentShader.fragmentshader");
+	GLuint bgProgramID = LoadShaders("BackgroundVertexShader.vertexshader", "BackgroundFragmentShader.fragmentshader");
+
+	//----------FOR BACKGROUND-----------------
+	GLfloat quadVertices[] = {
+		// Positions   // Texture Coords
+		-1.0f,  1.0f,  0.0f, 1.0f, // Top-left
+		-1.0f, -1.0f,  0.0f, 0.0f, // Bottom-left
+		 1.0f, -1.0f,  1.0f, 0.0f, // Bottom-right
+		 1.0f,  1.0f,  1.0f, 1.0f  // Top-right
+	};
+	GLuint quadIndices[] = { 0, 1, 2, 0, 2, 3 };
+
+	GLuint bgVao, bgVbo, bgEbo;
+	glGenVertexArrays(1, &bgVao);
+	glGenBuffers(1, &bgVbo);
+	glGenBuffers(1, &bgEbo);
+
+	glBindVertexArray(bgVao);
+	glBindBuffer(GL_ARRAY_BUFFER, bgVbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bgEbo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quadIndices), quadIndices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	GLuint backgroundTexture = loadTexture("assets/bg.png");
+
+	//-----------------------------------------
 
 	// Define vertices and indices
 	GLfloat vertices[] = {
@@ -92,6 +156,15 @@ int main(void) {
 
 	// Main loop
 	while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_RELEASE) {
+		// Render background
+		glClear(GL_COLOR_BUFFER_BIT);
+		glUseProgram(bgProgramID); // Shader program for background
+		glBindVertexArray(bgVao);
+		glBindTexture(GL_TEXTURE_2D, backgroundTexture);																							
+		glUniform1i(glGetUniformLocation(bgProgramID, "backgroundTexture"), 0);														
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
 		// Calculate delta time
 		float currentFrame = glfwGetTime();
 		float deltaTime = currentFrame - lastFrame;
@@ -110,9 +183,6 @@ int main(void) {
 		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
 			trianglePos.x += speed;
 
-		// Clear the screen
-		glClear(GL_COLOR_BUFFER_BIT);
-
 		// Use the shader program
 		glUseProgram(programID);
 
@@ -123,7 +193,7 @@ int main(void) {
 
 		// Set color
 		unsigned int colorLoc = glGetUniformLocation(programID, "color");
-		glm::vec4 color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0);
+		glm::vec4 color = glm::vec4(0.3f, 0.0f, 0.8f, 1.0);
 		glUniform4fv(colorLoc, 1, glm::value_ptr(color));
 
 		// Draw the triangle
@@ -140,6 +210,11 @@ int main(void) {
 	glDeleteBuffers(1, &ibo);
 	glDeleteVertexArrays(1, &vao);
 	glDeleteProgram(programID);
+
+	glDeleteBuffers(1, &bgVbo);
+	glDeleteBuffers(1, &bgEbo);
+	glDeleteVertexArrays(1, &bgVao);
+	glDeleteProgram(bgProgramID);
 
 	// Close OpenGL window and terminate GLFW
 	glfwTerminate();
