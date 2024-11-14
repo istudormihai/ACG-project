@@ -140,10 +140,6 @@ int main(void)
 
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 
-
-	// Handling mouse button presses
-
-
 	// Set a callback for handling mouse cursor position
 	// Decomment for a callback example
 	glfwSetCursorPosCallback(window, cursor_position_callback);
