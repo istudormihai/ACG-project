@@ -55,7 +55,7 @@ void window_callback(GLFWwindow* window, int new_width, int new_height) {
 }
 
 int main(void) {
-	
+
 	// Initialize GLFW
 	if (!glfwInit()) {
 		fprintf(stderr, "Failed to initialize GLFW\n");
@@ -83,7 +83,7 @@ int main(void) {
 	// Set up the rendering window
 	glViewport(0, 0, width, height);
 
-	 //Background color
+	//Background color
 	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
 
 	// Compile shaders
@@ -186,7 +186,7 @@ int main(void) {
 	glm::vec4(0.7f, 0.3f, 0.0f, 1.0f), // Yellow
 	glm::vec4(1.0f, 0.0f, 0.5f, 1.0f), // Magenta
 	glm::vec4(0.0f, 1.0f, 1.0f, 1.0f),
-	glm::vec4(0.7f, 0.3f, 0.0f, 1.0f), 
+	glm::vec4(0.7f, 0.3f, 0.0f, 1.0f),
 	glm::vec4(1.0f, 0.0f, 0.5f, 1.0f), // Magenta
 	glm::vec4(0.0f, 1.0f, 1.0f, 1.0f)// Cyan
 	};
@@ -230,14 +230,17 @@ int main(void) {
 	// Timing variables for smooth movement
 	float lastFrame = 0.0f;
 
+	bool hexagonsToRemove[9] = { false };
+
+
 	// Main loop
 	while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_RELEASE) {
 		// Render background
 		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(bgProgramID); // Shader program for background
 		glBindVertexArray(bgVao);
-		glBindTexture(GL_TEXTURE_2D, backgroundTexture);																							
-		glUniform1i(glGetUniformLocation(bgProgramID, "backgroundTexture"), 0);														
+		glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+		glUniform1i(glGetUniformLocation(bgProgramID, "backgroundTexture"), 0);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 
@@ -258,7 +261,14 @@ int main(void) {
 			trianglePos.x -= speed;
 		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
 			trianglePos.x += speed;
-
+		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+			for (int i = 0; i < 9; ++i) {
+				// Adjust the threshold as needed
+				if (std::abs(trianglePos.x - hexagonPositions[i].x)<0.05f) {
+					hexagonsToRemove[i] = true;
+				}
+			}
+		}
 		// Use the shader program
 		glUseProgram(programID);
 
@@ -281,22 +291,24 @@ int main(void) {
 		glBindVertexArray(hexVao); // Bind the hexagon VAO
 
 		for (int i = 0; i < 9; ++i) {
-			// Update position based on sine wave
-			hexagonPositions[i].x = 0.8f * sin(glfwGetTime() * hexSpeed[i] + hexTimeOffsets[i]);
+			if (!hexagonsToRemove[i]) {
+				// Update position based on sine wave
+				hexagonPositions[i].x = 0.8f * sin(glfwGetTime() * hexSpeed[i] + hexTimeOffsets[i]);
 
-			// Create transformation matrix
-			glm::mat4 trans = glm::translate(glm::mat4(1.0f), hexagonPositions[i]);
+				// Create transformation matrix
+				glm::mat4 trans = glm::translate(glm::mat4(1.0f), hexagonPositions[i]);
 
-			// Pass the transformation matrix to the shader
-			unsigned int transformLoc = glGetUniformLocation(programID, "transform");
-			glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+				// Pass the transformation matrix to the shader
+				unsigned int transformLoc = glGetUniformLocation(programID, "transform");
+				glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
-			// Pass the color to the shader
-			unsigned int colorLoc = glGetUniformLocation(programID, "color");
-			glUniform4fv(colorLoc, 1, glm::value_ptr(hexColors[i]));
+				// Pass the color to the shader
+				unsigned int colorLoc = glGetUniformLocation(programID, "color");
+				glUniform4fv(colorLoc, 1, glm::value_ptr(hexColors[i]));
 
-			// Draw the hexagon
-			glDrawElements(GL_TRIANGLES, numSides * 3, GL_UNSIGNED_INT, 0);
+				// Draw the hexagon
+				glDrawElements(GL_TRIANGLES, numSides * 3, GL_UNSIGNED_INT, 0);
+			}
 		}
 
 		// Swap buffers and poll events
