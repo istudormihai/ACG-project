@@ -164,25 +164,31 @@ int main(void) {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
-	glm::vec3 hexagonPositions[6] = {
+	glm::vec3 hexagonPositions[9] = {
 	glm::vec3(-0.8f, 0.8f, 0.0f),
-	glm::vec3(-0.4f, 0.8f, 0.0f),
+	glm::vec3(-0.4f, 0.4f, 0.0f),
 	glm::vec3(0.0f,  0.8f, 0.0f),
 	glm::vec3(0.4f,  0.4f, 0.0f),
 	glm::vec3(0.8f,  0.8f, 0.0f),
-	glm::vec3(1.2f,  0.8f, 0.0f)
+	glm::vec3(1.2f,  0.4f, 0.0f),
+	glm::vec3(0.4f,  0.6f, 0.0f),
+	glm::vec3(0.8f,  0.6f, 0.0f),
+	glm::vec3(1.2f,  0.6f, 0.0f)
 	};
 
-	float hexSpeed[6] = { 0.5f, 0.6f, 0.4f, 0.7f, 0.5f, 0.8f }; // Independent speeds
-	float hexTimeOffsets[6] = { 0.0f, 0.5f, 1.0f, 1.5f, 2.0f, 2.5f }; // Phase offsets
+	float hexSpeed[9] = { 1.5f, 0.5f, 1.5f, 0.5f, 1.5f, 0.5f, 1.0f, 1.0f, 1.0f }; // Independent speeds
+	float hexTimeOffsets[9] = { 0.0f, 0.5f, 1.0f, 1.5f, 2.0f, 2.5f, 3.0f, 3.5f, 4.0f }; // Phase offsets
 
-	glm::vec4 hexColors[6] = {
+	glm::vec4 hexColors[9] = {
 	glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), // Red
 	glm::vec4(0.0f, 1.0f, 0.0f, 1.0f), // Green
 	glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), // Blue
-	glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), // Yellow
-	glm::vec4(1.0f, 0.0f, 1.0f, 1.0f), // Magenta
-	glm::vec4(0.0f, 1.0f, 1.0f, 1.0f)  // Cyan
+	glm::vec4(0.7f, 0.3f, 0.0f, 1.0f), // Yellow
+	glm::vec4(1.0f, 0.0f, 0.5f, 1.0f), // Magenta
+	glm::vec4(0.0f, 1.0f, 1.0f, 1.0f),
+	glm::vec4(0.7f, 0.3f, 0.0f, 1.0f), 
+	glm::vec4(1.0f, 0.0f, 0.5f, 1.0f), // Magenta
+	glm::vec4(0.0f, 1.0f, 1.0f, 1.0f)// Cyan
 	};
 
 
@@ -274,7 +280,7 @@ int main(void) {
 		glUseProgram(programID); // Use shader program for hexagons
 		glBindVertexArray(hexVao); // Bind the hexagon VAO
 
-		for (int i = 0; i < 6; ++i) {
+		for (int i = 0; i < 9; ++i) {
 			// Update position based on sine wave
 			hexagonPositions[i].x = 0.8f * sin(glfwGetTime() * hexSpeed[i] + hexTimeOffsets[i]);
 
