@@ -12,6 +12,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "dependente\stb\stb_image.h"
 
+#define M_PI 3.14159265358979323846
+
 // background function
 GLuint loadTexture(const char* filePath) {
 	GLuint textureID;
@@ -118,6 +120,74 @@ int main(void) {
 
 	//-----------------------------------------
 
+	//--------------FOR HEXAGONS---------------
+	// Define Hexagon Vertices
+	const int numSides = 6;
+	const float radius = 0.1f;
+	const int hexVertexCount = numSides + 2; // Include center and loop back to first vertex
+
+	float hexagonVertices[hexVertexCount * 3]; // 3 coordinates (x, y, z) per vertex
+	hexagonVertices[0] = 0.0f; // Center x
+	hexagonVertices[1] = 0.0f; // Center y
+	hexagonVertices[2] = 0.0f; // Center z
+
+	// Generate hexagon vertex positions
+	for (int i = 1; i <= numSides + 1; ++i) {
+		float angle = 2.0f * M_PI * (i - 1) / numSides;
+		hexagonVertices[i * 3 + 0] = radius * cos(angle);
+		hexagonVertices[i * 3 + 1] = radius * sin(angle);
+		hexagonVertices[i * 3 + 2] = 0.0f; // Z-coordinate
+	}
+
+	// Hexagon Indices
+	GLuint hexagonIndices[numSides * 3];
+	for (int i = 0; i < numSides; ++i) {
+		hexagonIndices[i * 3 + 0] = 0;
+		hexagonIndices[i * 3 + 1] = i + 1;
+		hexagonIndices[i * 3 + 2] = i + 2;
+	}
+	hexagonIndices[numSides * 3 - 1] = 1; // Last triangle loops back to first vertex
+
+	// Create VAO, VBO, and IBO for Hexagons
+	GLuint hexVao, hexVbo, hexEbo;
+	glGenVertexArrays(1, &hexVao);
+	glGenBuffers(1, &hexVbo);
+	glGenBuffers(1, &hexEbo);
+
+	glBindVertexArray(hexVao);
+	glBindBuffer(GL_ARRAY_BUFFER, hexVbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(hexagonVertices), hexagonVertices, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, hexEbo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(hexagonIndices), hexagonIndices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glm::vec3 hexagonPositions[6] = {
+	glm::vec3(-0.8f, 0.8f, 0.0f),
+	glm::vec3(-0.4f, 0.8f, 0.0f),
+	glm::vec3(0.0f,  0.8f, 0.0f),
+	glm::vec3(0.4f,  0.4f, 0.0f),
+	glm::vec3(0.8f,  0.8f, 0.0f),
+	glm::vec3(1.2f,  0.8f, 0.0f)
+	};
+
+	float hexSpeed[6] = { 0.5f, 0.6f, 0.4f, 0.7f, 0.5f, 0.8f }; // Independent speeds
+	float hexTimeOffsets[6] = { 0.0f, 0.5f, 1.0f, 1.5f, 2.0f, 2.5f }; // Phase offsets
+
+	glm::vec4 hexColors[6] = {
+	glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), // Red
+	glm::vec4(0.0f, 1.0f, 0.0f, 1.0f), // Green
+	glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), // Blue
+	glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), // Yellow
+	glm::vec4(1.0f, 0.0f, 1.0f, 1.0f), // Magenta
+	glm::vec4(0.0f, 1.0f, 1.0f, 1.0f)  // Cyan
+	};
+
+
+	//-----------------------------------------
+
 	// Define vertices and indices
 	GLfloat vertices[] = {
 		0.0f,  -0.7f, 0.0f,  // Bottom-center vertex
@@ -199,6 +269,29 @@ int main(void) {
 		// Draw the triangle
 		glBindVertexArray(vao);
 		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+
+		// Render Hexagons
+		glUseProgram(programID); // Use shader program for hexagons
+		glBindVertexArray(hexVao); // Bind the hexagon VAO
+
+		for (int i = 0; i < 6; ++i) {
+			// Update position based on sine wave
+			hexagonPositions[i].x = 0.8f * sin(glfwGetTime() * hexSpeed[i] + hexTimeOffsets[i]);
+
+			// Create transformation matrix
+			glm::mat4 trans = glm::translate(glm::mat4(1.0f), hexagonPositions[i]);
+
+			// Pass the transformation matrix to the shader
+			unsigned int transformLoc = glGetUniformLocation(programID, "transform");
+			glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
+			// Pass the color to the shader
+			unsigned int colorLoc = glGetUniformLocation(programID, "color");
+			glUniform4fv(colorLoc, 1, glm::value_ptr(hexColors[i]));
+
+			// Draw the hexagon
+			glDrawElements(GL_TRIANGLES, numSides * 3, GL_UNSIGNED_INT, 0);
+		}
 
 		// Swap buffers and poll events
 		glfwSwapBuffers(window);
