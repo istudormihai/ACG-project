@@ -264,7 +264,7 @@ int main(void) {
 		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
 			for (int i = 0; i < 9; ++i) {
 				// Adjust the threshold as needed
-				if (std::abs(trianglePos.x - hexagonPositions[i].x)<0.05f) {
+				if (std::abs(trianglePos.x - hexagonPositions[i].x) < 0.05f) {
 					hexagonsToRemove[i] = true;
 				}
 			}
