@@ -171,7 +171,7 @@ int main()
 		skyboxShader.use();
 
 		glm::mat4 view = glm::mat4(glm::mat3(camera.getViewMatrix())); // Remove translation for the skybox
-		glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)window.getWidth() / window.getHeight(), 0.1f, 100.0f);
+		glm::mat4 projection = glm::perspective(glm::degrees(90.0f), (float)window.getWidth() / window.getHeight(), 0.1f, 100.0f);
 
 		GLuint viewLoc = glGetUniformLocation(skyboxShader.getId(), "view");
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
