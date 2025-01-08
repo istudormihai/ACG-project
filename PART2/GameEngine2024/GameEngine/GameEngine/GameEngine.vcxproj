@@ -135,14 +135,9 @@
     <ClInclude Include="Model Loading\texture.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\fragment_shader.glsl" />
+    <None Include="C:\Users\mihai\Desktop\uploads_files_623682_Free_SciFi-Fighter\Free_SciFi-Fighter\SciFi_Fighter_AK5.mtl" />
     <None Include="Shaders\sun_fragment_shader.glsl" />
     <None Include="Shaders\sun_vertex_shader.glsl" />
-    <None Include="Shaders\vertex_shader.glsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="Resources\Textures\rock.bmp" />
-    <Image Include="Resources\Textures\wood.bmp" />
   </ItemGroup>
   <ItemGroup>
     <Object Include="Resources\Models\sphere.obj">

@@ -5,7 +5,7 @@
 #include "Model Loading\texture.h"
 #include "Model Loading\meshLoaderObj.h"
 
-void processKeyboardInput ();
+void processKeyboardInput();
 
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
@@ -82,18 +82,19 @@ int main()
 	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
-
+	
 
 	//building and compiling shader program
 	Shader skyboxShader("Shaders/skybox_vertex_shader.glsl", "Shaders/skybox_fragment_shader.glsl");
+	Shader spaceshipShader("Shaders/spaceship_vertex_shader.glsl", "Shaders/spaceship_fragment_shader.glsl");
+	Shader sunShader("Shaders/sun_vertex_shader.glsl", "Shaders/sun_fragment_shader.glsl");	
 
-	Shader shader("Shaders/vertex_shader.glsl", "Shaders/fragment_shader.glsl");
-	Shader sunShader("Shaders/sun_vertex_shader.glsl", "Shaders/sun_fragment_shader.glsl");
+	GLuint spaceshipTexture = loadBMP("Resources/Textures/spaceship_texture.bmp");
+	std::vector<Texture> textures;
+	textures.push_back(Texture());
+	textures[0].id = spaceshipTexture;
+	textures[0].type = "texture_diffuse";
 
-	//Textures
-	GLuint tex2 = loadBMP("Resources/Textures/rock.bmp");
-	GLuint tex3 = loadBMP("Resources/Textures/orange.bmp");
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -101,6 +102,8 @@ int main()
 	// we can add here our textures :)
 	MeshLoaderObj loader;
 	Mesh sun = loader.loadObj("Resources/Models/sphere.obj");
+	Mesh spaceship = loader.loadObj("Resources/Models/spaceship.obj", textures);
+
 
 	//check if we close the window or press the escape button
 	while (!window.isPressed(GLFW_KEY_ESCAPE) &&
@@ -152,6 +155,29 @@ int main()
 
 		sun.draw(sunShader);
 
+		//
+		spaceshipShader.use();
+
+		view = camera.getViewMatrix();
+		projection = glm::perspective(glm::degrees(45.0f), (float)window.getWidth() / window.getHeight(), 0.1f, 100.0f);
+
+		GLuint viewLocSpaceship = glGetUniformLocation(spaceshipShader.getId(), "view");
+		glUniformMatrix4fv(viewLocSpaceship, 1, GL_FALSE, &view[0][0]);
+
+		GLuint projLocSpaceship = glGetUniformLocation(spaceshipShader.getId(), "projection");
+		glUniformMatrix4fv(projLocSpaceship, 1, GL_FALSE, &projection[0][0]);
+
+		// Set up the spaceship model matrix
+		glm::mat4 model = glm::mat4(1.0f);
+		float scaleFactor = 0.1f; // Adjust this value to make the spaceship smaller
+		model = glm::translate(model, camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f);  // Adjust the multiplier for position
+		model = glm::scale(model, glm::vec3(scaleFactor, scaleFactor, scaleFactor));
+
+		GLuint modelLocSpaceship = glGetUniformLocation(spaceshipShader.getId(), "model");
+		glUniformMatrix4fv(modelLocSpaceship, 1, GL_FALSE, &model[0][0]);
+
+		spaceship.draw(spaceshipShader);
+
 		window.update();
 	}
 }
@@ -174,13 +200,15 @@ void processKeyboardInput()
 	if (window.isPressed(GLFW_KEY_F))
 		camera.keyboardMoveDown(cameraSpeed);
 
+	//spaceshipPosition = camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f;  // Sync spaceship with camera
+
 	//rotation
-	//if (window.isPressed(GLFW_KEY_LEFT))
-	//	camera.rotateOy(cameraSpeed);
-	//if (window.isPressed(GLFW_KEY_RIGHT))
-	//	camera.rotateOy(-cameraSpeed);
-	//if (window.isPressed(GLFW_KEY_UP))
-	//	camera.rotateOx(cameraSpeed);
-	//if (window.isPressed(GLFW_KEY_DOWN))
-	//	camera.rotateOx(-cameraSpeed);
+	if (window.isPressed(GLFW_KEY_LEFT))
+		camera.rotateOy(cameraSpeed);
+	if (window.isPressed(GLFW_KEY_RIGHT))
+		camera.rotateOy(-cameraSpeed);
+	if (window.isPressed(GLFW_KEY_UP))	
+		camera.rotateOx(cameraSpeed);
+	if (window.isPressed(GLFW_KEY_DOWN))
+		camera.rotateOx(-cameraSpeed);
 }
