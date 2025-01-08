@@ -44,13 +44,16 @@ void Camera::keyboardMoveBack(float cameraSpeed)
 
 void Camera::keyboardMoveLeft(float cameraSpeed)
 {
-	//task
+	glm::vec3 rightDirection = glm::normalize(glm::cross(cameraViewDirection, cameraUp));  // Right direction (perpendicular to view and up)
+	cameraPosition -= rightDirection * cameraSpeed;  // Move left
 }
 
 void Camera::keyboardMoveRight(float cameraSpeed)
 {
-	//task
+	glm::vec3 rightDirection = glm::normalize(glm::cross(cameraViewDirection, cameraUp));  // Right direction (perpendicular to view and up)
+	cameraPosition += rightDirection * cameraSpeed;  // Move right
 }
+
 
 void Camera::keyboardMoveUp(float cameraSpeed)
 {
@@ -71,7 +74,7 @@ void Camera::rotateOx(float angle)
 
 void Camera::rotateOy (float angle)
 {
-	//task
+	//no need
 }
 
 glm::mat4 Camera::getViewMatrix()
