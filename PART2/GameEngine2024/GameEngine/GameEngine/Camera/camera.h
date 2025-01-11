@@ -28,6 +28,12 @@ class Camera
 		glm::vec3 getCameraViewDirection();
 		glm::vec3 getCameraUp();
 
+		void setPosition(glm::vec3 position);
+
+		void setRotation(float pitch, float yaw);
+
+		void rotate(float pitch, float yaw);
+
 		void keyboardMoveFront(float cameraSpeed);
 		void keyboardMoveBack(float cameraSpeed);
 		void keyboardMoveLeft(float cameraSpeed);
@@ -37,5 +43,6 @@ class Camera
 
 		void rotateOx(float angle);
 		void rotateOy(float angle);
+		void updateCameraVectors();
 };
 
