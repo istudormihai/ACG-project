@@ -23,8 +23,9 @@ bool isThrusterActive = false; // Is the thruster active
 
 int main()
 {   
-    camera.setPosition(glm::vec3(0.0f, 0.0f, 100.0f)); // Initial camera position (behind and slightly above)
-    camera.setRotation(-15.0f, -90.0f);
+    camera.setPosition(glm::vec3(0.0f, 5.0f, 20.0f)); // Initial camera position (behind and slightly above)
+    camera.setRotation(-15.0f, -90.0f); // Tilt camera down by 15 degrees
+
     // Load the sphere model for the thruster
 
     std::vector<std::string> skyboxFaces = {
@@ -115,6 +116,7 @@ int main()
     // Check if we close the window or press the escape button
     while (!window.isPressed(GLFW_KEY_ESCAPE) && glfwWindowShouldClose(window.getWindow()) == 0)
     {
+
         window.clear();
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -175,6 +177,7 @@ int main()
         model = glm::translate(model, camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f);  // Adjust the multiplier for position
         model = glm::scale(model, glm::vec3(scaleFactor, scaleFactor, scaleFactor));
 
+
         GLuint modelLocSpaceship = glGetUniformLocation(spaceshipShader.getId(), "model");
         glUniformMatrix4fv(modelLocSpaceship, 1, GL_FALSE, &model[0][0]);
 
@@ -195,24 +198,38 @@ int main()
         }
 
         // Assuming spaceship position and direction can be derived from the spaceship's transformation matrix
-        glm::mat4 spaceshipModel = glm::mat4(1.0f); // The spaceship model matrix
-        spaceshipModel = glm::translate(spaceshipModel, camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f);
-        glm::vec3 spaceshipPosition = glm::vec3(spaceshipModel[3]); // Get the spaceship's position
+        if (isThrusterActive) {
+            // Assuming spaceship position and direction can be derived from the spaceship's transformation matrix
+            glm::mat4 spaceshipModel = glm::mat4(1.0f); // The spaceship model matrix
+            spaceshipModel = glm::translate(spaceshipModel, camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f);
+            glm::vec3 spaceshipPosition = glm::vec3(spaceshipModel[3]); // Get the spaceship's position
 
-        // Calculate thruster position based on the spaceship's position and direction
-        glm::vec3 thrusterPosition = spaceshipPosition - camera.getCameraViewDirection() * 2.0f; // Move the thruster 2 units behind the spaceship
+            // Calculate thruster position based on the spaceship's position and direction
+            glm::vec3 thrusterPosition = spaceshipPosition - camera.getCameraRightDirection() * 0.39f - camera.getCameraViewDirection() * 1.5f - camera.getCameraUp() * 0.125f; // Move the left thruster 1 unit to the left
+            glm::vec3 thrusterPosition2 = spaceshipPosition + camera.getCameraRightDirection() * 0.39f - camera.getCameraViewDirection() * 1.5f - camera.getCameraUp() * 0.125f; // Move the right thruster 1 unit to the right
 
-        // Draw the thruster
-        spaceshipShader.use();
-        glm::mat4 thrusterModel = glm::mat4(1.0f);
-        thrusterModel = glm::translate(thrusterModel, thrusterPosition);  // Set thruster position
-        thrusterModel = glm::scale(thrusterModel, glm::vec3(0.01f, thrusterLength, 0.01f)); // Scale based on thruster length
+            // Draw the thruster for the left side
+            spaceshipShader.use();
+            glm::mat4 thrusterModel = glm::mat4(1.0f);
+            thrusterModel = glm::translate(thrusterModel, thrusterPosition);  // Set thruster position
+            float pulse = 0.05f + 0.5f * sin(glfwGetTime() * 5.0f); // Pulsate effect
+            thrusterModel = glm::scale(thrusterModel, glm::vec3(0.005f, thrusterLength * pulse, 0.005f));
 
-        GLuint modelLocThruster = glGetUniformLocation(spaceshipShader.getId(), "model");
-        glUniformMatrix4fv(modelLocThruster, 1, GL_FALSE, &thrusterModel[0][0]);
+            GLuint modelLocThruster = glGetUniformLocation(spaceshipShader.getId(), "model");
+            glUniformMatrix4fv(modelLocThruster, 1, GL_FALSE, &thrusterModel[0][0]);
 
-        sphere.draw(spaceshipShader); // Draw the thruster as a sphere
+            sphere.draw(spaceshipShader); // Draw the thruster as a sphere
 
+            // Draw the thruster for the right side
+            glm::mat4 thrusterModel2 = glm::mat4(1.0f);
+            thrusterModel2 = glm::translate(thrusterModel2, thrusterPosition2);  // Set second thruster position
+            thrusterModel2 = glm::scale(thrusterModel2, glm::vec3(0.005f, thrusterLength * pulse, 0.005f));
+
+            GLuint modelLocThruster2 = glGetUniformLocation(spaceshipShader.getId(), "model");
+            glUniformMatrix4fv(modelLocThruster2, 1, GL_FALSE, &thrusterModel2[0][0]);
+
+            sphere.draw(spaceshipShader); // Draw the second thruster as a sphere
+        }
 
         window.update();
     }
@@ -222,22 +239,29 @@ void processKeyboardInput()
 {
     float cameraSpeed = 30 * deltaTime;
 
+    // Get the horizontal direction (XZ plane)
+    glm::vec3 horizontalDirection = glm::normalize(glm::vec3(camera.getCameraViewDirection().x, 0.0f, camera.getCameraViewDirection().z));
+
+    // Get the right direction (orthogonal to horizontal direction and up vector)
+    glm::vec3 rightDirection = glm::normalize(glm::cross(horizontalDirection, camera.getCameraUp()));
+
     // Translation
     if (window.isPressed(GLFW_KEY_W)) {
-        camera.keyboardMoveFront(cameraSpeed);
+        camera.setPosition(camera.getCameraPosition() + horizontalDirection * cameraSpeed);
         isThrusterActive = true; // Activate thruster
     }
     else {
         isThrusterActive = false; // Deactivate thruster
     }
     if (window.isPressed(GLFW_KEY_S))
-        camera.keyboardMoveBack(cameraSpeed);
+        camera.setPosition(camera.getCameraPosition() - horizontalDirection * cameraSpeed);
     if (window.isPressed(GLFW_KEY_A))
-        camera.keyboardMoveLeft(cameraSpeed);
+        camera.setPosition(camera.getCameraPosition() - rightDirection * cameraSpeed);
     if (window.isPressed(GLFW_KEY_D))
-        camera.keyboardMoveRight(cameraSpeed);
+        camera.setPosition(camera.getCameraPosition() + rightDirection * cameraSpeed);
     if (window.isPressed(GLFW_KEY_R))
-        camera.keyboardMoveUp(cameraSpeed);
+        camera.setPosition(camera.getCameraPosition() + camera.getCameraUp() * cameraSpeed);
     if (window.isPressed(GLFW_KEY_F))
-        camera.keyboardMoveDown(cameraSpeed);
+        camera.setPosition(camera.getCameraPosition() - camera.getCameraUp() * cameraSpeed);
+
 }

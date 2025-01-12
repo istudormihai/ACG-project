@@ -34,6 +34,8 @@ class Camera
 
 		void rotate(float pitch, float yaw);
 
+		glm::vec3 getCameraRightDirection();
+
 		void keyboardMoveFront(float cameraSpeed);
 		void keyboardMoveBack(float cameraSpeed);
 		void keyboardMoveLeft(float cameraSpeed);

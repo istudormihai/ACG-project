@@ -114,7 +114,7 @@ void Camera::setPosition(glm::vec3 position)
     cameraPosition = position;
 }
 
-void Camera::setRotation(float pitch, float yaw)
+void Camera::setRotation(float pitch, float yaw) 
 {
     rotationOx = pitch;
     rotationOy = yaw;
@@ -125,4 +125,9 @@ void Camera::rotate(float pitch, float yaw) {
     rotationOx += pitch;
     rotationOy += yaw;
     updateCameraVectors();
+}
+
+glm::vec3 Camera::getCameraRightDirection()
+{
+    return glm::normalize(glm::cross(cameraViewDirection, cameraUp));
 }

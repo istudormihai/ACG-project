@@ -1,11 +1,7 @@
-#version 330 core
-out vec4 color;
-
-in vec2 TexCoords;
-
-uniform sampler2D texture_diffuse;
+uniform vec3 thrusterColor; // Uniform to pass color
 
 void main()
 {
-    color = texture(texture_diffuse, TexCoords);
+    // Use thruster color for the fragment color
+    gl_FragColor = vec4(thrusterColor, 1.0f);
 }
