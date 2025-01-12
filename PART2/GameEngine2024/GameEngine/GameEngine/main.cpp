@@ -22,7 +22,7 @@ float thrusterLength = 0.0f; // Length of the thruster
 bool isThrusterActive = false; // Is the thruster active
 
 int main()
-{   
+{
     camera.setPosition(glm::vec3(0.0f, 5.0f, 20.0f)); // Initial camera position (behind and slightly above)
     camera.setRotation(-15.0f, -90.0f); // Tilt camera down by 15 degrees
 
@@ -121,6 +121,8 @@ int main()
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        float currentTime = glfwGetTime();  // Get the current time since the start of the application
+
 
         processKeyboardInput();
 
@@ -161,6 +163,7 @@ int main()
 
         // Draw the spaceship
         spaceshipShader.use();
+        glUniform1f(glGetUniformLocation(spaceshipShader.getId(), "time"), currentTime);
 
         view = camera.getViewMatrix();
         projection = glm::perspective(glm::degrees(45.0f), (float)window.getWidth() / window.getHeight(), 0.1f, 100.0f);
@@ -180,6 +183,8 @@ int main()
 
         GLuint modelLocSpaceship = glGetUniformLocation(spaceshipShader.getId(), "model");
         glUniformMatrix4fv(modelLocSpaceship, 1, GL_FALSE, &model[0][0]);
+        glUniform1i(glGetUniformLocation(spaceshipShader.getId(), "isThruster"), false);
+        glUniform3fv(glGetUniformLocation(spaceshipShader.getId(), "thrusterColor"), 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, 0.0f)));  // No thruster color
 
         spaceship.draw(spaceshipShader);
 
@@ -209,6 +214,8 @@ int main()
             glm::vec3 thrusterPosition2 = spaceshipPosition + camera.getCameraRightDirection() * 0.39f - camera.getCameraViewDirection() * 1.5f - camera.getCameraUp() * 0.125f; // Move the right thruster 1 unit to the right
 
             // Draw the thruster for the left side
+            glm::vec3 thrusterColor = glm::vec3(1.0f, 0.2f, 0.0f); // Example color for the thruster (Red)
+
             spaceshipShader.use();
             glm::mat4 thrusterModel = glm::mat4(1.0f);
             thrusterModel = glm::translate(thrusterModel, thrusterPosition);  // Set thruster position
@@ -217,6 +224,8 @@ int main()
 
             GLuint modelLocThruster = glGetUniformLocation(spaceshipShader.getId(), "model");
             glUniformMatrix4fv(modelLocThruster, 1, GL_FALSE, &thrusterModel[0][0]);
+            glUniform3fv(glGetUniformLocation(spaceshipShader.getId(), "thrusterColor"), 1, &thrusterColor[0]);
+            glUniform1i(glGetUniformLocation(spaceshipShader.getId(), "isThruster"), true); // Set thruster flag to true
 
             sphere.draw(spaceshipShader); // Draw the thruster as a sphere
 
@@ -227,8 +236,14 @@ int main()
 
             GLuint modelLocThruster2 = glGetUniformLocation(spaceshipShader.getId(), "model");
             glUniformMatrix4fv(modelLocThruster2, 1, GL_FALSE, &thrusterModel2[0][0]);
+            glUniform3fv(glGetUniformLocation(spaceshipShader.getId(), "thrusterColor"), 1, &thrusterColor[0]);
+            glUniform1i(glGetUniformLocation(spaceshipShader.getId(), "isThruster"), true); // Set thruster flag to true
 
             sphere.draw(spaceshipShader); // Draw the second thruster as a sphere
+        }
+        else
+        {
+            glUniform1i(glGetUniformLocation(spaceshipShader.getId(), "isThruster"), false); // Set thruster flag to false
         }
 
         window.update();
