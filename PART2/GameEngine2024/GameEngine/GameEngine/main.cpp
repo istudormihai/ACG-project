@@ -13,7 +13,7 @@ void processKeyboardInput();
 glm::vec3 generateRandomPosition(float rangeMin, float rangeMax) {
     float x = rangeMin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
     float y = rangeMin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
-    float z = rangeMin - 2000 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
+    float z = rangeMin - 3000 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
     return glm::vec3(x, y, z);
 }
 
@@ -58,7 +58,7 @@ void generatePlanets(int numPlanets, float rangeMin, float rangeMax, float minSc
 }
 
 
-const int numPlanets = 50;  // The maximum number of planets on screen at any time
+const int numPlanets = 150;  // The maximum number of planets on screen at any time
 const float planetRangeMin = -1000.0f;
 const float planetRangeMax = 1000.0f;
 const float planetMinScale = 0.5f;
@@ -71,10 +71,25 @@ void updatePlanets() {
     glm::vec3 cameraPos = camera.getCameraPosition();
 
     // If the camera has moved 900 units along the X, Y, or Z axis, spawn new planets
-    if (glm::length(cameraPos - lastCameraPosition) > 1000.0f) {
+    if (glm::length(cameraPos - lastCameraPosition) > 800.0f) {
         // Generate new planets
         generatePlanets(50, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
         lastCameraPosition = cameraPos;  // Update the last camera position
+    }
+
+    for (int i = 0; i < planetPositions.size(); ++i) {
+        glm::vec3 planetPos = planetPositions[i];
+
+        // Check if the planet is behind the camera by comparing the dot product
+        glm::vec3 toPlanet = planetPos - cameraPos;
+        float dotProduct = glm::dot(camera.getCameraViewDirection(), toPlanet);
+
+        // If the planet is behind the camera (dot product < 0), remove it
+        if (dotProduct < 0.0f) {
+            planetPositions.erase(planetPositions.begin() + i);
+            planetScales.erase(planetScales.begin() + i);
+            --i;  // Adjust the index because we've removed an element
+        }
     }
 
 }
@@ -185,8 +200,7 @@ int main()
         lastFrame = currentFrame;
         float currentTime = glfwGetTime();  // Get the current time since the start of the application
 
-        std::cout << "Camera Position: " << camera.getCameraPosition().x << ", "
-            << camera.getCameraPosition().y << ", " << camera.getCameraPosition().z << std::endl;
+        std::cout << "Number of planets: " << planetPositions.size() << std::endl;
         processKeyboardInput();
 
         
@@ -323,7 +337,7 @@ int main()
 
 void processKeyboardInput()
 {
-    float cameraSpeed = 300 * deltaTime;
+    float cameraSpeed = 3000 * deltaTime;
 
     // Get the horizontal direction (XZ plane)
     glm::vec3 horizontalDirection = glm::normalize(glm::vec3(camera.getCameraViewDirection().x, 0.0f, camera.getCameraViewDirection().z));
