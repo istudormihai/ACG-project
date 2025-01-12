@@ -4,8 +4,22 @@
 #include "Model Loading/mesh.h"
 #include "Model Loading/texture.h"
 #include "Model Loading/meshLoaderObj.h"
+#include <cstdlib>
+#include <ctime>
+
 
 void processKeyboardInput();
+
+glm::vec3 generateRandomPosition(float rangeMin, float rangeMax) {
+    float x = rangeMin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
+    float y = rangeMin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
+    float z = rangeMin - 2000 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
+    return glm::vec3(x, y, z);
+}
+
+float generateRandomScale(float minScale, float maxScale) {
+    return minScale + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (maxScale - minScale)));
+}
 
 float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
@@ -21,6 +35,49 @@ glm::vec3 lightPos = glm::vec3(-180.0f, 100.0f, -200.0f);
 float thrusterLength = 0.0f; // Length of the thruster
 bool isThrusterActive = false; // Is the thruster active
 
+std::vector<glm::vec3> planetPositions;
+std::vector<float> planetScales;
+
+
+void generatePlanets(int numPlanets, float rangeMin, float rangeMax, float minScale, float maxScale) {
+    //planetPositions.clear(); // Clear existing planets before adding new ones
+    //planetScales.clear();
+
+    for (int i = 0; i < numPlanets; ++i) {
+        // Generate and store positions relative to the camera position
+        glm::vec3 cameraPos = camera.getCameraPosition();
+        glm::vec3 planetPos = generateRandomPosition(rangeMin, rangeMax);
+
+        // Ensure planets are always within a reasonable range relative to the camera
+        // Adjust positions based on camera's current position
+        planetPos += cameraPos;
+
+        planetPositions.push_back(planetPos);  // Store the planet's position relative to the camera
+        planetScales.push_back(generateRandomScale(minScale, maxScale));
+    }
+}
+
+
+const int numPlanets = 50;  // The maximum number of planets on screen at any time
+const float planetRangeMin = -1000.0f;
+const float planetRangeMax = 1000.0f;
+const float planetMinScale = 0.5f;
+const float planetMaxScale = 3.5f;
+
+glm::vec3 lastCameraPosition = camera.getCameraPosition(); // Save the last position of the camera
+
+// Function to dynamically generate planets
+void updatePlanets() {
+    glm::vec3 cameraPos = camera.getCameraPosition();
+
+    // If the camera has moved 900 units along the X, Y, or Z axis, spawn new planets
+    if (glm::length(cameraPos - lastCameraPosition) > 1000.0f) {
+        // Generate new planets
+        generatePlanets(50, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
+        lastCameraPosition = cameraPos;  // Update the last camera position
+    }
+
+}
 int main()
 {
     camera.setPosition(glm::vec3(0.0f, 5.0f, 20.0f)); // Initial camera position (behind and slightly above)
@@ -40,7 +97,7 @@ int main()
     GLuint skyboxTexture = loadCubemap(skyboxFaces);
 
     float skyboxVertices[] = {
-        // positions          
+        // positions
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
          1.0f, -1.0f, -1.0f,
@@ -96,7 +153,7 @@ int main()
     // Building and compiling shader program
     Shader skyboxShader("Shaders/skybox_vertex_shader.glsl", "Shaders/skybox_fragment_shader.glsl");
     Shader spaceshipShader("Shaders/spaceship_vertex_shader.glsl", "Shaders/spaceship_fragment_shader.glsl");
-    Shader sunShader("Shaders/sun_vertex_shader.glsl", "Shaders/sun_fragment_shader.glsl");
+    Shader planetShader("Shaders/sun_vertex_shader.glsl", "Shaders/sun_fragment_shader.glsl");
 
     GLuint spaceshipTexture = loadBMP("Resources/Textures/spaceship_texture.bmp");
     std::vector<Texture> textures;
@@ -108,10 +165,15 @@ int main()
 
     // Create Obj files - easier :)
     MeshLoaderObj loader;
-    Mesh sun = loader.loadObj("Resources/Models/sphere.obj");
+    Mesh planet = loader.loadObj("Resources/Models/sphere.obj");
     Mesh spaceship = loader.loadObj("Resources/Models/spaceship.obj", textures);
     Mesh sphere = loader.loadObj("Resources/Models/sphere.obj");
 
+    srand(static_cast<unsigned int>(time(0))); // Seed random number generator with current time
+
+    generatePlanets(numPlanets, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
+
+    glEnable(GL_DEPTH_TEST);
 
     // Check if we close the window or press the escape button
     while (!window.isPressed(GLFW_KEY_ESCAPE) && glfwWindowShouldClose(window.getWindow()) == 0)
@@ -123,8 +185,12 @@ int main()
         lastFrame = currentFrame;
         float currentTime = glfwGetTime();  // Get the current time since the start of the application
 
-
+        std::cout << "Camera Position: " << camera.getCameraPosition().x << ", "
+            << camera.getCameraPosition().y << ", " << camera.getCameraPosition().z << std::endl;
         processKeyboardInput();
+
+        
+
 
         // Draw skybox
         glDepthFunc(GL_LEQUAL);
@@ -145,21 +211,26 @@ int main()
         glBindVertexArray(0);
         glDepthFunc(GL_LESS);
 
-        // Code for the light
-        sunShader.use();
+        // Code for the planets
+        planetShader.use();
+        projection = glm::perspective(glm::degrees(45.0f), (float)window.getWidth() / window.getHeight(), 0.1f, 10000.0f);
+        view = camera.getViewMatrix();
+        GLuint MatrixID = glGetUniformLocation(planetShader.getId(), "MVP");
 
-        glm::mat4 ProjectionMatrix = glm::perspective(90.0f, window.getWidth() * 1.0f / window.getHeight(), 0.1f, 10000.0f);
-        glm::mat4 ViewMatrix = glm::lookAt(camera.getCameraPosition(), camera.getCameraPosition() + camera.getCameraViewDirection(), camera.getCameraUp());
+        for (int i = 0; i < planetPositions.size(); ++i) {
+            updatePlanets();
+            glm::vec3 planetPos = planetPositions[i];  // Get the position of the current planet
+            float scale = planetScales[i];  // Get the scale of the current planet
 
-        GLuint MatrixID = glGetUniformLocation(sunShader.getId(), "MVP");
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, planetPos);  // Translate the planet to its position
+            model = glm::scale(model, glm::vec3(scale));  // Scale the planet
 
-        // Test for one Obj loading = light source
-        glm::mat4 ModelMatrix = glm::mat4(1.0);
-        ModelMatrix = glm::translate(ModelMatrix, lightPos);
-        glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
-        glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+            glm::mat4 MVP = projection * view * model;  // Combine the matrices
 
-        sun.draw(sunShader);
+            glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);  // Pass the MVP matrix to the shader
+            planet.draw(planetShader);  // Draw the planet using the `planetShader`
+        }
 
         // Draw the spaceship
         spaceshipShader.use();
@@ -233,7 +304,7 @@ int main()
             glm::mat4 thrusterModel2 = glm::mat4(1.0f);
             thrusterModel2 = glm::translate(thrusterModel2, thrusterPosition2);  // Set second thruster position
             thrusterModel2 = glm::scale(thrusterModel2, glm::vec3(0.005f, thrusterLength * pulse, 0.005f));
-
+           
             GLuint modelLocThruster2 = glGetUniformLocation(spaceshipShader.getId(), "model");
             glUniformMatrix4fv(modelLocThruster2, 1, GL_FALSE, &thrusterModel2[0][0]);
             glUniform3fv(glGetUniformLocation(spaceshipShader.getId(), "thrusterColor"), 1, &thrusterColor[0]);
@@ -252,7 +323,7 @@ int main()
 
 void processKeyboardInput()
 {
-    float cameraSpeed = 30 * deltaTime;
+    float cameraSpeed = 300 * deltaTime;
 
     // Get the horizontal direction (XZ plane)
     glm::vec3 horizontalDirection = glm::normalize(glm::vec3(camera.getCameraViewDirection().x, 0.0f, camera.getCameraViewDirection().z));
@@ -280,3 +351,4 @@ void processKeyboardInput()
         camera.setPosition(camera.getCameraPosition() - camera.getCameraUp() * cameraSpeed);
 
 }
+
