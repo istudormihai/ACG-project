@@ -8,7 +8,7 @@
 #include <ctime>
 
 
-
+float score = 0;
 
 void processKeyboardInput();
 
@@ -107,7 +107,7 @@ void generatePlanets(int numPlanets, float rangeMin, float rangeMax, float minSc
 }
 
 
-const int numPlanets = 150;  // The maximum number of planets on screen at any time
+int numPlanets = 50;  // The maximum number of planets on screen at any time
 const float planetRangeMin = -1000.0f;
 const float planetRangeMax = 1000.0f;
 const float planetMinScale = 10.5f;
@@ -123,7 +123,7 @@ void updatePlanets() {
     // If the camera has moved 900 units along the X, Y, or Z axis, spawn new planets
     if (glm::length(cameraPos - lastCameraPosition) > 800.0f) {
         // Generate new planets
-        generatePlanets(50, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
+        generatePlanets(numPlanets, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
         lastCameraPosition = cameraPos;  // Update the last camera position
     }
 
@@ -393,7 +393,12 @@ int main()
         timeElapsed += deltaTime;  // Accumulate time
         forwardSpeed = glm::min(5000.0f, 50.0f + 25.0f * timeElapsed);  // Cap speed at 1000
         camera.setPosition(camera.getCameraPosition() + horizontalDirection * forwardSpeed * deltaTime);
+        numPlanets = glm::min(90, 45 + 1 * (int)timeElapsed);
         //std::cout << " CURRENT SPEED " << forwardSpeed << std::endl;
+        score += timeElapsed/1000.0f + forwardSpeed/500;
+        std::cout << "Score: " << (int)score << "Planets: "<< planetPositions.size() << "Speed: " << forwardSpeed <<std::endl;
+        if (score < 0.0f)
+            score = 0.0f;
         window.update();
     }
 }
@@ -408,10 +413,8 @@ void processKeyboardInput()
     glm::vec3 rightDirection = glm::normalize(glm::cross(horizontalDirection, camera.getCameraUp()));
 
     // Translation
-    if (window.isPressed(GLFW_KEY_W)) {
+    if (window.isPressed(GLFW_KEY_W))
         camera.setPosition(camera.getCameraPosition() + camera.getCameraUp() * movingSpeed);
-        std::cout << movingSpeed << std::endl;
-    }
     if (window.isPressed(GLFW_KEY_S))
         camera.setPosition(camera.getCameraPosition() - camera.getCameraUp() * movingSpeed);
     if (window.isPressed(GLFW_KEY_A))
@@ -430,6 +433,7 @@ void processKeyboardInput()
             // Check if spaceship's XY position intersects with the planet's bounding box
             if (planetBox.intersectsXY(spaceshipPos)) {
                 // Planet is "hit", so we remove it
+                score -= 1000.0f;
                 planetPositions.erase(planetPositions.begin() + i);
                 planetScales.erase(planetScales.begin() + i);
                 planetBoundingBoxes.erase(planetBoundingBoxes.begin() + i);
