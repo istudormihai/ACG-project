@@ -7,41 +7,32 @@
 #include <cstdlib>
 #include <ctime>
 
-
-float score = 0;
-bool gameOver = false;  // Game over flag
-float planetRotationSpeed = 5.0f;   // Speed of rotation for all planets
-
-void processKeyboardInput();
-
-glm::vec3 generateRandomPosition(float rangeMin, float rangeMax) {
-    float x = rangeMin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
-    float y = rangeMin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
-    float z = rangeMin - 3000 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
-    return glm::vec3(x, y, z);
-}
-
-float generateRandomScale(float minScale, float maxScale) {
-    return minScale + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (maxScale - minScale)));
-}
-
-float deltaTime = 0.0f; // time between current frame and last frame
-float lastFrame = 0.0f;
-
-Window window("Game Engine", 800, 800);
+Window window("Cosmic Revolution", 1000, 1000);
 Camera camera;
 
-glm::vec3 lightColor = glm::vec3(1.0f);
-glm::vec3 lightPos = glm::vec3(-180.0f, 100.0f, -200.0f);
+// global variables
+bool gameOver = false;                      // game over condition
+float score = 0;                            // score, of course
+float planetRotationSpeed = 5.0f;           // rotation speed for generated planets
+float deltaTime = 0.0f;                     // amount of time between current frame and last frame
+float lastFrame = 0.0f;                     // timestamp of last rendered frame
+float boundingBoxScaleFactor = 3.0f;        // scale factor for generated planets bounding box
+float thrusterLength = 0.0f;                // thruster length
+float forwardSpeed = 50.0f;                 // initial speed of the spaceship
+float timeElapsed = 0.0f;                   // game duration
+const float planetRangeMin = -1000.0f;      // minimum range for spawning planets
+const float planetRangeMax = 1000.0f;       // maximum range for spawning planets
+const float planetMinScale = 10.0f;          // minimum size for a planet
+const float planetMaxScale = 15.0f;         // maximum size for a planet
+int numPlanets = 45;                        // initial number of planets
+std::vector<glm::vec3> planetPositions;     // vector for random planet positions
+std::vector<float> planetScales;            // vector for random planet sizes
+glm::vec3 lastCameraPosition = camera.getCameraPosition();  // save the last position of the camera
 
-// Tilt camera down by 15 degrees
-
-float thrusterLength = 0.0f; // Length of the thruster
-bool isThrusterActive = false; // Is the thruster active
-
-std::vector<glm::vec3> planetPositions;
-std::vector<float> planetScales;
-
+// functions (declared at the end of the code)
+void processKeyboardInput();
+glm::vec3 generateRandomPosition(float rangeMin, float rangeMax);
+float generateRandomScale(float minScale, float maxScale);
 struct AABB {
     glm::vec3 min;
     glm::vec3 max;
@@ -52,112 +43,30 @@ struct AABB {
     }
 
     bool intersects(const AABB& other) const {
-        // Check for overlap in each axis (x, y, z)
         return (min.x <= other.max.x && max.x >= other.min.x) &&
             (min.y <= other.max.y && max.y >= other.min.y) &&
             (min.z <= other.max.z && max.z >= other.min.z);
     }
     bool intersectsXY(const glm::vec3& point) const {
-        // Check if point is within the XY bounds of the AABB (ignoring Z)
         return (point.x >= min.x && point.x <= max.x) &&
             (point.y >= min.y && point.y <= max.y);
     }
 };
-
-AABB getSpaceshipBoundingBox(const glm::mat4& model) {
-    glm::vec3 scale = glm::vec3(model[0][0], model[1][1], model[2][2]); // Assume uniform scale
-    glm::vec3 spaceshipPos = glm::vec3(model[3]);
-    return AABB(spaceshipPos, scale.x);  // Using x scale as the bounding box size
-}
-
+AABB getSpaceshipBoundingBox(const glm::mat4& model);
 std::vector<AABB> planetBoundingBoxes;
-
-
-void checkCollisions() {
-    glm::mat4 spaceshipModel = glm::mat4(1.0f); // The spaceship model matrix
-    spaceshipModel = glm::translate(spaceshipModel, camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f);
-    spaceshipModel = glm::scale(spaceshipModel, glm::vec3(1.0f, 1.0f, 1.0f));  // Scale the spaceship
-
-    AABB spaceshipBox = getSpaceshipBoundingBox(spaceshipModel); // Get the spaceship's bounding box
-
-    // Check collision with each planet
-    for (size_t i = 0; i < planetBoundingBoxes.size(); ++i) {
-        if (spaceshipBox.intersects(planetBoundingBoxes[i])) {
-            gameOver = true;  // Set game over flag to true if collision happens
-            std::cout << "GAME OVER! Final score: " << score << " Press R to restart! " << std::endl;
-        }
-    }
-}
-
-
-float boundingBoxScaleFactor = 3.0f;  // Scale factor to make the bounding boxes larger
-
-void generatePlanets(int numPlanets, float rangeMin, float rangeMax, float minScale, float maxScale) {
-
-    for (int i = 0; i < numPlanets; ++i) {
-        glm::vec3 cameraPos = camera.getCameraPosition();
-        glm::vec3 planetPos = generateRandomPosition(rangeMin, rangeMax);
-        planetPos += cameraPos;
-
-        planetPositions.push_back(planetPos);
-        float scale = generateRandomScale(minScale, maxScale);
-        planetScales.push_back(scale);
-
-        float boundingBoxScale = scale * boundingBoxScaleFactor;
-        // Generate bounding box for the planet
-        planetBoundingBoxes.push_back(AABB(planetPos, boundingBoxScale));
-    }
-}
-
-
-int numPlanets = 45;  // The maximum number of planets on screen at any time
-const float planetRangeMin = -1000.0f;
-const float planetRangeMax = 1000.0f;
-const float planetMinScale = 10.5f;
-const float planetMaxScale = 13.5f;
-
-glm::vec3 lastCameraPosition = camera.getCameraPosition(); // Save the last position of the camera
-
-// Function to dynamically generate planets
-void updatePlanets() {
-
-    glm::vec3 cameraPos = camera.getCameraPosition();
-
-    // If the camera has moved 900 units along the X, Y, or Z axis, spawn new planets
-    if (glm::length(cameraPos - lastCameraPosition) > 800.0f) {
-        // Generate new planets
-        generatePlanets(numPlanets, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
-        lastCameraPosition = cameraPos;  // Update the last camera position
-    }
-
-    for (int i = 0; i < planetPositions.size(); ++i) {
-        glm::vec3 planetPos = planetPositions[i];
-
-        // Check if the planet is behind the camera by comparing the dot product
-        glm::vec3 toPlanet = planetPos - cameraPos;
-        float dotProduct = glm::dot(camera.getCameraViewDirection(), toPlanet);
-
-        // If the planet is behind the camera (dot product < 0), remove it
-        if (dotProduct < 0.0f) {
-            planetPositions.erase(planetPositions.begin() + i);
-            planetScales.erase(planetScales.begin() + i);
-            planetBoundingBoxes.erase(planetBoundingBoxes.begin() + i);
-            --i;  // Adjust the index because we've removed an element
-        }
-    }
-
-}
-
-float forwardSpeed = 50.0f;  // Speed of automatic forward motion
-float timeElapsed = 0.0f;  // Time that has passed since the start of the program
+void checkCollisions();
+void generatePlanets(int numPlanets, float rangeMin, float rangeMax, float minScale, float maxScale);
+void updatePlanets();
+void resetGame();
 
 int main()
 {
-    camera.setPosition(glm::vec3(0.0f, 5.0f, 20.0f)); // Initial camera position (behind and slightly above)
-    camera.setRotation(-15.0f, -90.0f); // Tilt camera down by 15 degrees
+    // setting the position of the camera such that it gives a nice viewing angle of the spaceship
+    camera.setPosition(glm::vec3(0.0f, 5.0f, 20.0f)); 
+    camera.setRotation(-15.0f, -90.0f);
+    glm::vec3 horizontalDirection = glm::normalize(glm::vec3(camera.getCameraViewDirection().x, 0.0f, camera.getCameraViewDirection().z));
 
-    // Load the sphere model for the thruster
-
+    // skybox
     std::vector<std::string> skyboxFaces = {
         "Resources/Skybox/right.png",
         "Resources/Skybox/left.png",
@@ -166,46 +75,38 @@ int main()
         "Resources/Skybox/front.png",
         "Resources/Skybox/back.png"
     };
-
     GLuint skyboxTexture = loadCubemap(skyboxFaces);
-
     float skyboxVertices[] = {
-        // positions
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
          1.0f, -1.0f, -1.0f,
          1.0f, -1.0f, -1.0f,
          1.0f,  1.0f, -1.0f,
         -1.0f,  1.0f, -1.0f,
-
         -1.0f, -1.0f,  1.0f,
         -1.0f, -1.0f, -1.0f,
         -1.0f,  1.0f, -1.0f,
         -1.0f,  1.0f, -1.0f,
         -1.0f,  1.0f,  1.0f,
         -1.0f, -1.0f,  1.0f,
-
          1.0f, -1.0f, -1.0f,
          1.0f, -1.0f,  1.0f,
          1.0f,  1.0f,  1.0f,
          1.0f,  1.0f,  1.0f,
          1.0f,  1.0f, -1.0f,
          1.0f, -1.0f, -1.0f,
-
         -1.0f, -1.0f,  1.0f,
         -1.0f,  1.0f,  1.0f,
          1.0f,  1.0f,  1.0f,
          1.0f,  1.0f,  1.0f,
          1.0f, -1.0f,  1.0f,
         -1.0f, -1.0f,  1.0f,
-
         -1.0f,  1.0f, -1.0f,
          1.0f,  1.0f, -1.0f,
          1.0f,  1.0f,  1.0f,
          1.0f,  1.0f,  1.0f,
         -1.0f,  1.0f,  1.0f,
         -1.0f,  1.0f, -1.0f,
-
         -1.0f, -1.0f, -1.0f,
         -1.0f, -1.0f,  1.0f,
          1.0f, -1.0f, -1.0f,
@@ -213,7 +114,6 @@ int main()
         -1.0f, -1.0f,  1.0f,
          1.0f, -1.0f,  1.0f
     };
-
     GLuint skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
     glGenBuffers(1, &skyboxVBO);
@@ -223,179 +123,133 @@ int main()
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
-    // Building and compiling shader program
+    // shaders, textures and objects
     Shader skyboxShader("Shaders/skybox_vertex_shader.glsl", "Shaders/skybox_fragment_shader.glsl");
     Shader spaceshipShader("Shaders/spaceship_vertex_shader.glsl", "Shaders/spaceship_fragment_shader.glsl");
     Shader planetShader("Shaders/sun_vertex_shader.glsl", "Shaders/sun_fragment_shader.glsl");
-
     GLuint spaceshipTexture = loadBMP("Resources/Textures/spaceship_texture.bmp");
     std::vector<Texture> textures;
     textures.push_back(Texture());
     textures[0].id = spaceshipTexture;
     textures[0].type = "texture_diffuse";
-
-    glEnable(GL_DEPTH_TEST);
-
     GLuint planetTexture = loadBMP("Resources/Textures/planet2.bmp");
     std::vector<Texture> textures2;
     textures2.push_back(Texture());
     textures2[0].id = planetTexture;
     textures2[0].type = "texture_diffuse";
-
-
-    // Create Obj files - easier :)
     MeshLoaderObj loader;
     Mesh planet = loader.loadObj("Resources/Models/sphere3.obj", textures2);
     Mesh spaceship = loader.loadObj("Resources/Models/spaceship.obj", textures);
     Mesh sphere = loader.loadObj("Resources/Models/sphere.obj");
 
-    srand(static_cast<unsigned int>(time(0))); // Seed random number generator with current time
+    //random seed for number generator
+    srand(static_cast<unsigned int>(time(0))); 
 
+    //first set of planets generated before the game starts
     generatePlanets(numPlanets, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
-
     glEnable(GL_DEPTH_TEST);
 
-    glm::vec3 horizontalDirection = glm::normalize(glm::vec3(camera.getCameraViewDirection().x, 0.0f, camera.getCameraViewDirection().z));
-
-
-    // Check if we close the window or press the escape button
+    //main loop
     while (!window.isPressed(GLFW_KEY_ESCAPE) && glfwWindowShouldClose(window.getWindow()) == 0)
     {
-
+        // init
         window.clear();
-        float currentFrame = glfwGetTime();
+        float currentFrame = glfwGetTime(); // current time since the start of application
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        float currentTime = glfwGetTime();  // Get the current time since the start of the application
-
         processKeyboardInput();
 
-
-        // Draw skybox
+        // skybox
         glDepthFunc(GL_LEQUAL);
         skyboxShader.use();
-
-        glm::mat4 view = glm::mat4(glm::mat3(camera.getViewMatrix())); // Remove translation for the skybox
+        glm::mat4 view = glm::mat4(glm::mat3(camera.getViewMatrix()));
         glm::mat4 projection = glm::perspective(glm::degrees(90.0f), (float)window.getWidth() / window.getHeight(), 0.1f, 100.0f);
-
         GLuint viewLoc = glGetUniformLocation(skyboxShader.getId(), "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
-
         GLuint projLoc = glGetUniformLocation(skyboxShader.getId(), "projection");
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, &projection[0][0]);
-
         glBindVertexArray(skyboxVAO);
         glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
         glDepthFunc(GL_LESS);
 
-        // Code for the planets
-        // Inside the main loop, before drawing the planets:
+        // planets
         planetShader.use();
         projection = glm::perspective(glm::degrees(45.0f), (float)window.getWidth() / window.getHeight(), 0.1f, 10000.0f);
         view = camera.getViewMatrix();
         GLuint MatrixID = glGetUniformLocation(planetShader.getId(), "MVP");
 
+        // generating planets constantly
         for (int i = 0; i < planetPositions.size(); ++i) {
-            updatePlanets();  // Keep calling updatePlanets to manage positions of planets
-
-            glm::vec3 planetPos = planetPositions[i];  // Get the position of the current planet
-            float scale = planetScales[i];  // Get the scale of the current plane
-
-            float rotationAngle = planetRotationSpeed * currentTime;  // Same rotation for all planets
+            updatePlanets();    
+            glm::vec3 planetPos = planetPositions[i];  
+            float scale = planetScales[i];  
+            float rotationAngle = planetRotationSpeed * currentFrame;  
             glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, planetPos);  // Translate the planet to its position
-            model = glm::rotate(model, glm::degrees(rotationAngle), glm::vec3(1.0f, 0.0f, 0.0f));  // Rotate around Y-axis
-            model = glm::scale(model, glm::vec3(scale));  // Scale the planet
-
-            glm::mat4 MVP = projection * view * model;  // Combine the matrices
+            model = glm::translate(model, planetPos);  
+            model = glm::rotate(model, glm::degrees(rotationAngle), glm::vec3(1.0f, 0.0f, 0.0f));  
+            model = glm::scale(model, glm::vec3(scale));  
+            glm::mat4 MVP = projection * view * model; 
+            glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
             checkCollisions();
-
-            glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);  // Pass the MVP matrix to the shader
             planet.draw(planetShader);
         }
 
-
-        // Draw the spaceship
+        // spaceship
         spaceshipShader.use();
-        glUniform1f(glGetUniformLocation(spaceshipShader.getId(), "time"), currentTime);
-
+        glUniform1f(glGetUniformLocation(spaceshipShader.getId(), "time"), currentFrame);
         view = camera.getViewMatrix();
         projection = glm::perspective(glm::degrees(45.0f), (float)window.getWidth() / window.getHeight(), 0.1f, 100.0f);
-
         GLuint viewLocSpaceship = glGetUniformLocation(spaceshipShader.getId(), "view");
         glUniformMatrix4fv(viewLocSpaceship, 1, GL_FALSE, &view[0][0]);
-
         GLuint projLocSpaceship = glGetUniformLocation(spaceshipShader.getId(), "projection");
         glUniformMatrix4fv(projLocSpaceship, 1, GL_FALSE, &projection[0][0]);
-
-        // Set up the spaceship model matrix
         glm::mat4 model = glm::mat4(1.0f);
-        float scaleFactor = 0.1f; // Adjust this value to make the spaceship smaller
-        model = glm::translate(model, camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f);  // Adjust the multiplier for position
-        model = glm::scale(model, glm::vec3(scaleFactor, scaleFactor, scaleFactor));
-
-
+        model = glm::translate(model, camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f);  
+        model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
         GLuint modelLocSpaceship = glGetUniformLocation(spaceshipShader.getId(), "model");
         glUniformMatrix4fv(modelLocSpaceship, 1, GL_FALSE, &model[0][0]);
         glUniform1i(glGetUniformLocation(spaceshipShader.getId(), "isThruster"), false);
-        glUniform3fv(glGetUniformLocation(spaceshipShader.getId(), "thrusterColor"), 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, 0.0f)));  // No thruster color
-
+        glUniform3fv(glGetUniformLocation(spaceshipShader.getId(), "thrusterColor"), 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, 0.0f)));  
         spaceship.draw(spaceshipShader);
 
-        // Draw the thruster
-        thrusterLength += deltaTime * 5.0f; // Increase length over time
+        // thrusters
+        thrusterLength += deltaTime * 5.0f; 
         if (thrusterLength > 0.01f) {
-            thrusterLength = 0.01f; // Cap the length
+            thrusterLength = 0.01f;
         }
-
-
-
-        // Assuming spaceship position and direction can be derived from the spaceship's transformation matrix
-            // Assuming spaceship position and direction can be derived from the spaceship's transformation matrix
-        glm::mat4 spaceshipModel = glm::mat4(1.0f); // The spaceship model matrix
+        glm::mat4 spaceshipModel = glm::mat4(1.0f); 
         spaceshipModel = glm::translate(spaceshipModel, camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f);
-        glm::vec3 spaceshipPosition = glm::vec3(spaceshipModel[3]); // Get the spaceship's position
-
-        // Calculate thruster position based on the spaceship's position and direction
-        glm::vec3 thrusterPosition = spaceshipPosition - camera.getCameraRightDirection() * 0.39f - camera.getCameraViewDirection() * 1.5f - camera.getCameraUp() * 0.125f; // Move the left thruster 1 unit to the left
-        glm::vec3 thrusterPosition2 = spaceshipPosition + camera.getCameraRightDirection() * 0.39f - camera.getCameraViewDirection() * 1.5f - camera.getCameraUp() * 0.125f; // Move the right thruster 1 unit to the right
-
-        // Draw the thruster for the left side
-        glm::vec3 thrusterColor = glm::vec3(1.0f, 0.2f, 0.0f); // Example color for the thruster (Red)
-
+        glm::vec3 spaceshipPosition = glm::vec3(spaceshipModel[3]); 
+        glm::vec3 thrusterPosition = spaceshipPosition - camera.getCameraRightDirection() * 0.39f - camera.getCameraViewDirection() * 1.5f - camera.getCameraUp() * 0.125f;
+        glm::vec3 thrusterPosition2 = spaceshipPosition + camera.getCameraRightDirection() * 0.39f - camera.getCameraViewDirection() * 1.5f - camera.getCameraUp() * 0.125f; 
+        glm::vec3 thrusterColor = glm::vec3(1.0f, 0.2f, 0.0f); 
         spaceshipShader.use();
         glm::mat4 thrusterModel = glm::mat4(1.0f);
-        thrusterModel = glm::translate(thrusterModel, thrusterPosition);  // Set thruster position
-        float pulse = 0.05f + 0.5f * sin(glfwGetTime() * 5.0f); // Pulsate effect
+        thrusterModel = glm::translate(thrusterModel, thrusterPosition);  
+        float pulse = 0.05f + 0.5f * sin(glfwGetTime() * 5.0f); 
         thrusterModel = glm::scale(thrusterModel, glm::vec3(0.005f, thrusterLength * pulse, 0.005f));
-
         GLuint modelLocThruster = glGetUniformLocation(spaceshipShader.getId(), "model");
         glUniformMatrix4fv(modelLocThruster, 1, GL_FALSE, &thrusterModel[0][0]);
         glUniform3fv(glGetUniformLocation(spaceshipShader.getId(), "thrusterColor"), 1, &thrusterColor[0]);
-        glUniform1i(glGetUniformLocation(spaceshipShader.getId(), "isThruster"), true); // Set thruster flag to true
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-        sphere.draw(spaceshipShader); // Draw the thruster as a sphere
-
-        // Draw the thruster for the right side
+        glUniform1i(glGetUniformLocation(spaceshipShader.getId(), "isThruster"), true);
+        sphere.draw(spaceshipShader); 
         glm::mat4 thrusterModel2 = glm::mat4(1.0f);
-        thrusterModel2 = glm::translate(thrusterModel2, thrusterPosition2);  // Set second thruster position
+        thrusterModel2 = glm::translate(thrusterModel2, thrusterPosition2);  
         thrusterModel2 = glm::scale(thrusterModel2, glm::vec3(0.005f, thrusterLength * pulse, 0.005f));
-
         GLuint modelLocThruster2 = glGetUniformLocation(spaceshipShader.getId(), "model");
         glUniformMatrix4fv(modelLocThruster2, 1, GL_FALSE, &thrusterModel2[0][0]);
         glUniform3fv(glGetUniformLocation(spaceshipShader.getId(), "thrusterColor"), 1, &thrusterColor[0]);
-        glUniform1i(glGetUniformLocation(spaceshipShader.getId(), "isThruster"), true); // Set thruster flag to true
+        glUniform1i(glGetUniformLocation(spaceshipShader.getId(), "isThruster"), true); 
+        sphere.draw(spaceshipShader); 
 
-        sphere.draw(spaceshipShader); // Draw the second thruster as a sphere
-        timeElapsed += deltaTime;  // Accumulate time
+        // game stats + settings
+        timeElapsed += deltaTime;  
         camera.setPosition(camera.getCameraPosition() + horizontalDirection * forwardSpeed * deltaTime);
         numPlanets = glm::min(90, 45 + 1 * (int)timeElapsed);
-        //std::cout << " CURRENT SPEED " << forwardSpeed << std::endl;
+
+        // game over condition
         if (gameOver == false) {
             forwardSpeed = glm::min(5000.0f, 50.0f + 25.0f * timeElapsed);  // Cap speed at 1000
             score += timeElapsed / 1000.0f + forwardSpeed / 500;
@@ -411,45 +265,15 @@ int main()
     }
 }
 
-void resetGame() {
-    gameOver = false;  // Reset game over flag
-
-    // Reset camera position and rotation
-    camera.setPosition(glm::vec3(0.0f, 5.0f, 20.0f));  // Initial camera position (behind and slightly above)
-    camera.setRotation(-15.0f, -90.0f); // Tilt camera down by 15 degrees
-
-    // Reset score
-    score = 0.0f;
-    planetRotationSpeed = 5.0f;
-    // Clear and regenerate planets
-    planetPositions.clear();
-    planetScales.clear();
-    planetBoundingBoxes.clear();
-    numPlanets = 45;
-    generatePlanets(numPlanets, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
-
-    // Reset the time elapsed and forward speed
-    timeElapsed = 0.0f;
-    forwardSpeed = 50.0f;
-    
-
-    // Reset the spaceship thruster length
-    thrusterLength = 0.0f;
-}
-
 void processKeyboardInput()
 {
     float movingSpeed = glm::min(20.0f, 0.2f + 0.1f * timeElapsed);
-    // Get the horizontal direction (XZ plane)
     glm::vec3 horizontalDirection = glm::normalize(glm::vec3(camera.getCameraViewDirection().x, 0.0f, camera.getCameraViewDirection().z));
-
-    // Get the right direction (orthogonal to horizontal direction and up vector)
     glm::vec3 rightDirection = glm::normalize(glm::cross(horizontalDirection, camera.getCameraUp()));
 
-    // Translation
     if (gameOver) {
         if (window.isPressed(GLFW_KEY_R)) {
-            resetGame();  // Call function to reset game
+            resetGame();  
         }
     }
     else {
@@ -462,24 +286,97 @@ void processKeyboardInput()
         if (window.isPressed(GLFW_KEY_D))
             camera.setPosition(camera.getCameraPosition() + rightDirection * movingSpeed);
         if (window.isPressed(GLFW_KEY_SPACE)) {
-            glm::vec3 spaceshipPos = camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f;  // Adjust spaceship position
-
-            // Loop through each planet and check if the spaceship intersects its XY bounding box
+            glm::vec3 spaceshipPos = camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f;
             for (size_t i = 0; i < planetPositions.size(); ++i) {
                 glm::vec3 planetPos = planetPositions[i];
                 float scale = planetScales[i];
-                AABB planetBox(planetPos, scale * boundingBoxScaleFactor);  // Get the planet's bounding box
-
-                // Check if spaceship's XY position intersects with the planet's bounding box
+                AABB planetBox(planetPos, scale * boundingBoxScaleFactor);
                 if (planetBox.intersectsXY(spaceshipPos)) {
-                    // Planet is "hit", so we remove it
                     score -= 1000.0f;
                     planetPositions.erase(planetPositions.begin() + i);
                     planetScales.erase(planetScales.begin() + i);
                     planetBoundingBoxes.erase(planetBoundingBoxes.begin() + i);
-                    --i;  // Adjust the index because we removed a planet
+                    --i; 
                 }
             }
         }
     }
+}
+
+glm::vec3 generateRandomPosition(float rangeMin, float rangeMax) {
+    float x = rangeMin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
+    float y = rangeMin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
+    float z = rangeMin - 3000 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (rangeMax - rangeMin)));
+    return glm::vec3(x, y, z);
+}
+
+float generateRandomScale(float minScale, float maxScale) {
+    return minScale + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (maxScale - minScale)));
+}
+
+AABB getSpaceshipBoundingBox(const glm::mat4& model) {
+    glm::vec3 scale = glm::vec3(model[0][0], model[1][1], model[2][2]); 
+    glm::vec3 spaceshipPos = glm::vec3(model[3]);
+    return AABB(spaceshipPos, scale.x);  
+}
+
+void checkCollisions() {
+    glm::mat4 spaceshipModel = glm::mat4(1.0f); 
+    spaceshipModel = glm::translate(spaceshipModel, camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f);
+    spaceshipModel = glm::scale(spaceshipModel, glm::vec3(1.0f, 1.0f, 1.0f));  
+    AABB spaceshipBox = getSpaceshipBoundingBox(spaceshipModel);
+    for (size_t i = 0; i < planetBoundingBoxes.size(); ++i) {
+        if (spaceshipBox.intersects(planetBoundingBoxes[i])) {
+            gameOver = true;  
+            std::cout << "GAME OVER! Final score: " << score << " Press R to restart! " << std::endl;
+        }
+    }
+}
+
+void generatePlanets(int numPlanets, float rangeMin, float rangeMax, float minScale, float maxScale) {
+    for (int i = 0; i < numPlanets; ++i) {
+        glm::vec3 cameraPos = camera.getCameraPosition();
+        glm::vec3 planetPos = generateRandomPosition(rangeMin, rangeMax);
+        planetPos += cameraPos;
+        planetPositions.push_back(planetPos);
+        float scale = generateRandomScale(minScale, maxScale);
+        planetScales.push_back(scale);
+        float boundingBoxScale = scale * boundingBoxScaleFactor;
+        planetBoundingBoxes.push_back(AABB(planetPos, boundingBoxScale));
+    }
+}
+
+void updatePlanets() {
+    glm::vec3 cameraPos = camera.getCameraPosition();
+    if (glm::length(cameraPos - lastCameraPosition) > 800.0f) {
+        generatePlanets(numPlanets, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
+        lastCameraPosition = cameraPos;  
+    }
+    for (int i = 0; i < planetPositions.size(); ++i) {
+        glm::vec3 planetPos = planetPositions[i];
+        glm::vec3 toPlanet = planetPos - cameraPos;
+        float dotProduct = glm::dot(camera.getCameraViewDirection(), toPlanet);
+        if (dotProduct < 0.0f) {
+            planetPositions.erase(planetPositions.begin() + i);
+            planetScales.erase(planetScales.begin() + i);
+            planetBoundingBoxes.erase(planetBoundingBoxes.begin() + i);
+            --i;
+        }
+    }
+}
+
+void resetGame() {
+    gameOver = false;
+    camera.setPosition(glm::vec3(0.0f, 5.0f, 20.0f)); 
+    camera.setRotation(-15.0f, -90.0f); 
+    score = 0.0f;
+    planetRotationSpeed = 5.0f;
+    planetPositions.clear();
+    planetScales.clear();
+    planetBoundingBoxes.clear();
+    numPlanets = 45;
+    generatePlanets(numPlanets, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
+    timeElapsed = 0.0f;
+    forwardSpeed = 50.0f;
+    thrusterLength = 0.0f;
 }
