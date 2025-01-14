@@ -1,0 +1,7 @@
+﻿          1 file(s) copied.
+          1 file(s) copied.
+  main.cpp
+C:\Users\septi\Desktop\proiecte\ACG\part 1\ACG-project\Cosmic_Revolution\main.cpp(136,15): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\septi\Desktop\proiecte\ACG\part 1\ACG-project\Cosmic_Revolution\main.cpp(248,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\septi\Desktop\proiecte\ACG\part 1\ACG-project\Cosmic_Revolution\main.cpp(296,34): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+  lab_TGIP_1.vcxproj -> C:\Users\septi\Desktop\proiecte\ACG\part 1\ACG-project\Cosmic_Revolution\Debug\Cosmic_Revolution.exe
