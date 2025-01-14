@@ -126,7 +126,7 @@ int main()
     // shaders, textures and objects
     Shader skyboxShader("Shaders/skybox_vertex_shader.glsl", "Shaders/skybox_fragment_shader.glsl");
     Shader spaceshipShader("Shaders/spaceship_vertex_shader.glsl", "Shaders/spaceship_fragment_shader.glsl");
-    Shader planetShader("Shaders/sun_vertex_shader.glsl", "Shaders/sun_fragment_shader.glsl");
+    Shader planetShader("Shaders/planet_vertex_shader.glsl", "Shaders/planet_fragment_shader.glsl");
     GLuint spaceshipTexture = loadBMP("Resources/Textures/spaceship_texture.bmp");
     std::vector<Texture> textures;
     textures.push_back(Texture());
