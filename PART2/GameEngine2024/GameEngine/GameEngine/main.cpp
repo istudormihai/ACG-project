@@ -55,6 +55,11 @@ struct AABB {
             (min.y <= other.max.y && max.y >= other.min.y) &&
             (min.z <= other.max.z && max.z >= other.min.z);
     }
+    bool intersectsXY(const glm::vec3& point) const {
+        // Check if point is within the XY bounds of the AABB (ignoring Z)
+        return (point.x >= min.x && point.x <= max.x) &&
+            (point.y >= min.y && point.y <= max.y);
+    }
 };
 
 AABB getSpaceshipBoundingBox(const glm::mat4& model) {
@@ -342,8 +347,8 @@ int main()
         if (thrusterLength > 0.01f) {
             thrusterLength = 0.01f; // Cap the length
         }
-        
-        
+
+
 
         // Assuming spaceship position and direction can be derived from the spaceship's transformation matrix
             // Assuming spaceship position and direction can be derived from the spaceship's transformation matrix
@@ -413,5 +418,23 @@ void processKeyboardInput()
         camera.setPosition(camera.getCameraPosition() - rightDirection * movingSpeed);
     if (window.isPressed(GLFW_KEY_D))
         camera.setPosition(camera.getCameraPosition() + rightDirection * movingSpeed);
+    if (window.isPressed(GLFW_KEY_SPACE)) {
+        glm::vec3 spaceshipPos = camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f;  // Adjust spaceship position
 
+        // Loop through each planet and check if the spaceship intersects its XY bounding box
+        for (size_t i = 0; i < planetPositions.size(); ++i) {
+            glm::vec3 planetPos = planetPositions[i];
+            float scale = planetScales[i];
+            AABB planetBox(planetPos, scale * boundingBoxScaleFactor);  // Get the planet's bounding box
+
+            // Check if spaceship's XY position intersects with the planet's bounding box
+            if (planetBox.intersectsXY(spaceshipPos)) {
+                // Planet is "hit", so we remove it
+                planetPositions.erase(planetPositions.begin() + i);
+                planetScales.erase(planetScales.begin() + i);
+                planetBoundingBoxes.erase(planetBoundingBoxes.begin() + i);
+                --i;  // Adjust the index because we removed a planet
+            }
+        }
+    }
 }
