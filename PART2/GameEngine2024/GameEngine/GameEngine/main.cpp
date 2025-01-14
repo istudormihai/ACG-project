@@ -9,6 +9,8 @@
 
 
 float score = 0;
+bool gameOver = false;  // Game over flag
+float planetRotationSpeed = 5.0f;   // Speed of rotation for all planets
 
 void processKeyboardInput();
 
@@ -81,7 +83,8 @@ void checkCollisions() {
     // Check collision with each planet
     for (size_t i = 0; i < planetBoundingBoxes.size(); ++i) {
         if (spaceshipBox.intersects(planetBoundingBoxes[i])) {
-            //std::cout << "Collision detected with planet " << i << std::endl;
+            gameOver = true;  // Set game over flag to true if collision happens
+            std::cout << "GAME OVER! Final score: " << score << " Press R to restart! " << std::endl;
         }
     }
 }
@@ -107,7 +110,7 @@ void generatePlanets(int numPlanets, float rangeMin, float rangeMax, float minSc
 }
 
 
-int numPlanets = 50;  // The maximum number of planets on screen at any time
+int numPlanets = 45;  // The maximum number of planets on screen at any time
 const float planetRangeMin = -1000.0f;
 const float planetRangeMax = 1000.0f;
 const float planetMinScale = 10.5f;
@@ -254,6 +257,7 @@ int main()
 
     glm::vec3 horizontalDirection = glm::normalize(glm::vec3(camera.getCameraViewDirection().x, 0.0f, camera.getCameraViewDirection().z));
 
+
     // Check if we close the window or press the escape button
     while (!window.isPressed(GLFW_KEY_ESCAPE) && glfwWindowShouldClose(window.getWindow()) == 0)
     {
@@ -292,8 +296,6 @@ int main()
         projection = glm::perspective(glm::degrees(45.0f), (float)window.getWidth() / window.getHeight(), 0.1f, 10000.0f);
         view = camera.getViewMatrix();
         GLuint MatrixID = glGetUniformLocation(planetShader.getId(), "MVP");
-
-        float planetRotationSpeed = 5.0f;   // Speed of rotation for all planets
 
         for (int i = 0; i < planetPositions.size(); ++i) {
             updatePlanets();  // Keep calling updatePlanets to manage positions of planets
@@ -391,16 +393,48 @@ int main()
 
         sphere.draw(spaceshipShader); // Draw the second thruster as a sphere
         timeElapsed += deltaTime;  // Accumulate time
-        forwardSpeed = glm::min(5000.0f, 50.0f + 25.0f * timeElapsed);  // Cap speed at 1000
         camera.setPosition(camera.getCameraPosition() + horizontalDirection * forwardSpeed * deltaTime);
         numPlanets = glm::min(90, 45 + 1 * (int)timeElapsed);
         //std::cout << " CURRENT SPEED " << forwardSpeed << std::endl;
-        score += timeElapsed/1000.0f + forwardSpeed/500;
-        std::cout << "Score: " << (int)score << "Planets: "<< planetPositions.size() << "Speed: " << forwardSpeed <<std::endl;
-        if (score < 0.0f)
-            score = 0.0f;
+        if (gameOver == false) {
+            forwardSpeed = glm::min(5000.0f, 50.0f + 25.0f * timeElapsed);  // Cap speed at 1000
+            score += timeElapsed / 1000.0f + forwardSpeed / 500;
+            std::cout << "Score: " << (int)score << " Planets: " << planetPositions.size() << " Speed: " << forwardSpeed << std::endl;
+            if (score < 0.0f)
+                score = 0.0f;
+        }
+        else {
+            forwardSpeed = 25.0f;
+            planetRotationSpeed = 0;
+        }
         window.update();
     }
+}
+
+void resetGame() {
+    gameOver = false;  // Reset game over flag
+
+    // Reset camera position and rotation
+    camera.setPosition(glm::vec3(0.0f, 5.0f, 20.0f));  // Initial camera position (behind and slightly above)
+    camera.setRotation(-15.0f, -90.0f); // Tilt camera down by 15 degrees
+
+    // Reset score
+    score = 0.0f;
+    planetRotationSpeed = 5.0f;
+    // Clear and regenerate planets
+    planetPositions.clear();
+    planetScales.clear();
+    planetBoundingBoxes.clear();
+    numPlanets = 45;
+    generatePlanets(numPlanets, planetRangeMin, planetRangeMax, planetMinScale, planetMaxScale);
+
+    // Reset the time elapsed and forward speed
+    timeElapsed = 0.0f;
+    forwardSpeed = 50.0f;
+    
+
+    // Reset the spaceship thruster length
+    thrusterLength = 0.0f;
 }
 
 void processKeyboardInput()
@@ -413,31 +447,38 @@ void processKeyboardInput()
     glm::vec3 rightDirection = glm::normalize(glm::cross(horizontalDirection, camera.getCameraUp()));
 
     // Translation
-    if (window.isPressed(GLFW_KEY_W))
-        camera.setPosition(camera.getCameraPosition() + camera.getCameraUp() * movingSpeed);
-    if (window.isPressed(GLFW_KEY_S))
-        camera.setPosition(camera.getCameraPosition() - camera.getCameraUp() * movingSpeed);
-    if (window.isPressed(GLFW_KEY_A))
-        camera.setPosition(camera.getCameraPosition() - rightDirection * movingSpeed);
-    if (window.isPressed(GLFW_KEY_D))
-        camera.setPosition(camera.getCameraPosition() + rightDirection * movingSpeed);
-    if (window.isPressed(GLFW_KEY_SPACE)) {
-        glm::vec3 spaceshipPos = camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f;  // Adjust spaceship position
+    if (gameOver) {
+        if (window.isPressed(GLFW_KEY_R)) {
+            resetGame();  // Call function to reset game
+        }
+    }
+    else {
+        if (window.isPressed(GLFW_KEY_W))
+            camera.setPosition(camera.getCameraPosition() + camera.getCameraUp() * movingSpeed);
+        if (window.isPressed(GLFW_KEY_S))
+            camera.setPosition(camera.getCameraPosition() - camera.getCameraUp() * movingSpeed);
+        if (window.isPressed(GLFW_KEY_A))
+            camera.setPosition(camera.getCameraPosition() - rightDirection * movingSpeed);
+        if (window.isPressed(GLFW_KEY_D))
+            camera.setPosition(camera.getCameraPosition() + rightDirection * movingSpeed);
+        if (window.isPressed(GLFW_KEY_SPACE)) {
+            glm::vec3 spaceshipPos = camera.getCameraPosition() + camera.getCameraViewDirection() * 10.0f;  // Adjust spaceship position
 
-        // Loop through each planet and check if the spaceship intersects its XY bounding box
-        for (size_t i = 0; i < planetPositions.size(); ++i) {
-            glm::vec3 planetPos = planetPositions[i];
-            float scale = planetScales[i];
-            AABB planetBox(planetPos, scale * boundingBoxScaleFactor);  // Get the planet's bounding box
+            // Loop through each planet and check if the spaceship intersects its XY bounding box
+            for (size_t i = 0; i < planetPositions.size(); ++i) {
+                glm::vec3 planetPos = planetPositions[i];
+                float scale = planetScales[i];
+                AABB planetBox(planetPos, scale * boundingBoxScaleFactor);  // Get the planet's bounding box
 
-            // Check if spaceship's XY position intersects with the planet's bounding box
-            if (planetBox.intersectsXY(spaceshipPos)) {
-                // Planet is "hit", so we remove it
-                score -= 1000.0f;
-                planetPositions.erase(planetPositions.begin() + i);
-                planetScales.erase(planetScales.begin() + i);
-                planetBoundingBoxes.erase(planetBoundingBoxes.begin() + i);
-                --i;  // Adjust the index because we removed a planet
+                // Check if spaceship's XY position intersects with the planet's bounding box
+                if (planetBox.intersectsXY(spaceshipPos)) {
+                    // Planet is "hit", so we remove it
+                    score -= 1000.0f;
+                    planetPositions.erase(planetPositions.begin() + i);
+                    planetScales.erase(planetScales.begin() + i);
+                    planetBoundingBoxes.erase(planetBoundingBoxes.begin() + i);
+                    --i;  // Adjust the index because we removed a planet
+                }
             }
         }
     }
